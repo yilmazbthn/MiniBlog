@@ -1,5 +1,6 @@
 using FluentEmail.Core;
 using Microsoft.AspNetCore.Identity.UI.Services;
+
 namespace MiniBlog;
 
 public class EmailSender(IFluentEmailFactory fluentEmail) : IEmailSender

@@ -1,3 +1,4 @@
+
 using System.Net;
 using System.Net.Mail;
 using Microsoft.AspNetCore.Identity;
@@ -15,7 +16,6 @@ builder.Services.AddAuthorization();
 
 builder.Services.AddIdentityApiEndpoints<IdentityUser>(opt =>
     {
-        // yayında bunları yapmayın lütfen :)
         opt.Password.RequiredLength = 1;
         opt.Password.RequireNonAlphanumeric = false;
         opt.Password.RequireUppercase = false;
@@ -28,11 +28,30 @@ builder.Services.AddIdentityApiEndpoints<IdentityUser>(opt =>
     .AddRoles<IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>();
 
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.LoginPath = "/api/Auth/login"; 
+    options.AccessDeniedPath = "/api/Auth/denied"; 
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(15); 
+    options.SlidingExpiration = true; 
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.None; 
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // HTTPS zorunlu
+});
+
+
 builder.Services.Configure<SecurityStampValidatorOptions>(opt => opt.ValidationInterval = TimeSpan.Zero);
 
 builder.Services.AddControllers();
 
 builder.Services.AddOpenApi();
+builder.Services.AddControllers()
+    .AddJsonOptions(opt =>
+    {
+        opt.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+        opt.JsonSerializerOptions.DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull;
+    });
+
 var smtpSettings = builder.Configuration.GetSection("SmtpSettings").Get<SmtpSettings>();
 builder.Services
     .AddFluentEmail(smtpSettings.FromEmail, smtpSettings.FromName)
@@ -50,10 +69,9 @@ builder.Services.AddCors(opt =>
     opt.AddDefaultPolicy(policy =>
     {
         policy
-            //.WithOrigins("http://localhost:5173")
+            
             .AllowAnyOrigin()
             .AllowAnyHeader()
-            //.AllowCredentials()
             .AllowAnyMethod();
     });
 });
@@ -73,6 +91,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseCors();
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

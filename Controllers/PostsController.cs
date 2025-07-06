@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MiniBlog.Data;
+using MiniBlog.Models.DTOs;
 using MiniBlog.Models.Entities;
 
 namespace MiniBlog.Controllers;
@@ -13,7 +14,7 @@ namespace MiniBlog.Controllers;
 [Route("[controller]")]
 public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserManager<IdentityUser> userManager,RoleManager<IdentityRole> roleManager):ControllerBase
 {
-    [HttpGet]
+    [HttpGet("GetAllPosts")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(statusCode: StatusCodes.Status404NotFound)]
@@ -41,7 +42,7 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
            
     }
 
-    [HttpPost("{id}")]
+    [HttpPost("getpost/{id}")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(statusCode: StatusCodes.Status404NotFound)]
@@ -74,40 +75,48 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
         return Ok(post);
     }
 
-    [HttpPost("")]
+    [HttpPost("Create")]
     [Authorize]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(statusCode: StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Create([FromBody] Post post)
+    public async Task<IActionResult> Create([FromBody] PostDto post)
     {
         var user = await userManager.GetUserAsync(User);
         if (user == null)
-        {
             return Unauthorized();
-        }
 
         if (string.IsNullOrEmpty(post.Title))
-        {
             return BadRequest("Başlık boş olamaz");
-        }
+
         if (string.IsNullOrEmpty(post.Content))
+            return BadRequest("İçerik boş olamaz");
+        
+        var roles = await userManager.GetRolesAsync(user);
+        var isModeratorOrAdmin = roles.Contains("Admin") || roles.Contains("Moderator");
+
+        var model = new Post
         {
-            return BadRequest("İçerik Boş Olamaz");
-        }
-        var model =new Post
-        {
-           Title = post.Title,
-           Content = post.Content,
-           AuthorId = user.Id,
-           CreatedAt = DateTime.Now
+            Title = post.Title,
+            Content = post.Content,
+            AuthorId = user.Id,
+            CreatedAt = DateTime.UtcNow,
+            Status = isModeratorOrAdmin ? PostStatus.Approved : PostStatus.Pending
         };
+
         context.Posts.Add(model);
         await context.SaveChangesAsync();
-        return CreatedAtAction(nameof(GetAllPosts), new { id = model.Id }, model);
 
+        return CreatedAtAction(nameof(Get), new { id = model.Id }, new
+        {
+            model.Id,
+            model.Title,
+            model.Content,
+            Author = user.UserName,
+            model.CreatedAt,
+            model.Status
+        });
     }
 
-    [HttpPut("{id}")]
+
+    [HttpPut("update/{id}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -131,7 +140,7 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
        return Ok(post);
            
     }
-    [HttpDelete("{id}")]
+    [HttpDelete("delete/{id}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -195,19 +204,148 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
 
         return Ok(posts);
     }
+    
+    [HttpGet("search")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SearchPosts([FromQuery] string? q)
+    {
+        var query = context.Posts
+            .Include(p => p.Author)
+            .OrderByDescending(p => p.CreatedAt)
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            query = query.Where(p => p.Title.Contains(q) || p.Content.Contains(q));
+        }
+
+        var results = await query
+            .Select(p => new
+            {
+                p.Id,
+                p.Title,
+                p.Content,
+                Author = p.Author.UserName,
+                p.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(results);
+    }
     [HttpPut("{id}/approve")]
     [Authorize(Roles = "Admin,Moderator")]
     public async Task<IActionResult> ApprovePost(int id)
     {
-        var post = await context.Posts.FindAsync(id);
+        var post = await context.Posts
+            .Include(p => p.Author)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
         if (post == null)
-            return NotFound();
+            return NotFound("Yazı bulunamadı.");
 
         post.Status = PostStatus.Approved;
         await context.SaveChangesAsync();
 
-        return Ok("Yazı onaylandı.");
+        await fluentEmail
+            .To(post.Author.Email)
+            .Subject("Yazınız Onaylandı")
+            .Body($"Merhaba {post.Author.UserName},\n\n" +
+                  $"\"{post.Title}\" başlıklı yazınız moderatör tarafından onaylandı ve yayına alındı.")
+            .SendAsync();
+
+        return Ok("Yazı onaylandı ve e-posta gönderildi.");
     }
+    [HttpPut("{id}/reject")]
+    [Authorize(Roles = "Admin,Moderator")]
+    public async Task<IActionResult> RejectPost(int id)
+    {
+        var post = await context.Posts
+            .Include(p => p.Author)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (post == null)
+            return NotFound("Yazı bulunamadı.");
+
+        post.Status = PostStatus.Rejected;
+        await context.SaveChangesAsync();
+
+        await fluentEmail
+            .To(post.Author.Email)
+            .Subject("Yazınız Reddedildi")
+            .Body($"Merhaba {post.Author.UserName},\n\n" +
+                  $"\"{post.Title}\" başlıklı yazınız moderatör tarafından uygun bulunmadığı için reddedildi.")
+            .SendAsync();
+
+        return Ok("Yazı reddedildi ve e-posta gönderildi.");
+    }
+    [HttpGet("pending")]
+    [Authorize(Roles = "Moderator,Admin")]
+    public async Task<IActionResult> GetPendingPosts()
+    {
+        var pendingPosts = await context.Posts
+            .Include(p => p.Author)
+            .Where(p => p.Status == PostStatus.Pending)
+            .OrderByDescending(p => p.CreatedAt)
+            .Select(p => new
+            {
+                p.Id,
+                p.Title,
+                p.Content,
+                Author = p.Author.UserName,
+                p.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(pendingPosts);
+    }
+    [HttpGet("my-posts")]
+    [Authorize]
+    public async Task<IActionResult> GetMyPosts()
+    {
+        var user = await userManager.GetUserAsync(User);
+        if (user == null)
+            return Unauthorized();
+
+        var myPosts = await context.Posts
+            .Where(p => p.AuthorId == user.Id)
+            .OrderByDescending(p => p.CreatedAt)
+            .Select(p => new
+            {
+                p.Id,
+                p.Title,
+                p.Content,
+                p.Status,
+                p.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(myPosts);
+    }
+    [HttpGet("rejected")]
+    [Authorize]
+    public async Task<IActionResult> GetRejectedPosts()
+    {
+        var user = await userManager.GetUserAsync(User);
+        if (user == null)
+            return Unauthorized();
+
+        var rejectedPosts = await context.Posts
+            .Where(p => p.AuthorId == user.Id && p.Status == PostStatus.Rejected)
+            .OrderByDescending(p => p.CreatedAt)
+            .Select(p => new
+            {
+                p.Id,
+                p.Title,
+                p.Content,
+                p.CreatedAt
+            })
+            .ToListAsync();
+
+        return Ok(rejectedPosts);
+    }
+
+
+
 
 
 

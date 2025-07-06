@@ -31,7 +31,6 @@ public class AdminController(AppDbContext context,IEmailSender emailSender,IFlue
                 Roles = roles
             });
         }
-
         return Ok(userList);
     }
     [HttpPost("assign-role")]
@@ -96,4 +95,8 @@ public class AdminController(AppDbContext context,IEmailSender emailSender,IFlue
             var roles = await userManager.GetRolesAsync(user);
             return Ok(new { User = userName, Roles = roles });
         }
+        [Authorize(Roles = "Admin")]
+        [HttpGet("admin-only")]
+        public IActionResult OnlyAdmin() => Ok("Sadece admin görebilir.");
+
 }

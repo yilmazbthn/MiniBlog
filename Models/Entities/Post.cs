@@ -3,9 +3,9 @@ using MiniBlog.Models.Entities;
 
 public enum PostStatus
 {
-    Pending,
-    Approved,
-    Rejected
+    Pending=0,
+    Approved=1,
+    Rejected=2
 }
 
 public class Post
