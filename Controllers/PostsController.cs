@@ -14,11 +14,11 @@ namespace MiniBlog.Controllers;
 [Route("[controller]")]
 public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserManager<IdentityUser> userManager,RoleManager<IdentityRole> roleManager):ControllerBase
 {
-    [HttpGet("Getallposts")]
+    [HttpGet("GetPosts")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(statusCode: StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetAllPosts()
+    public async Task<IActionResult> GetPosts()
     {
         
         var posts = await context.Posts
@@ -42,11 +42,11 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
            
     }
 
-    [HttpPost("getpost/{id}")]
+    [HttpPost("GetPost/{id}")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(statusCode: StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Get(int id)
+    public async Task<IActionResult> GetPost(int id)
     {
         var post = await context.Posts
             .Include(p => p.Author)
@@ -75,9 +75,9 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
         return Ok(post);
     }
 
-    [HttpPost("create")]
+    [HttpPost("CreatePost")]
     [Authorize]
-    public async Task<IActionResult> Create([FromBody] PostDto post)
+    public async Task<IActionResult> CreatePost([FromBody] PostDto post)
     {
         var user = await userManager.GetUserAsync(User);
         if (user == null)
@@ -104,7 +104,7 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
         context.Posts.Add(model);
         await context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(Get), new { id = model.Id }, new
+        return CreatedAtAction(nameof(GetPost), new { id = model.Id }, new
         {
             model.Id,
             model.Title,
@@ -116,12 +116,12 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
     }
 
 
-    [HttpPut("update/{id}")]
+    [HttpPut("UpdatePost/{id}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(statusCode: StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Update(int id, [FromBody] Post updatePost)
+    public async Task<IActionResult> UpdatePost(int id, [FromBody] Post updatePost)
     {
        var post =await context.Posts.FindAsync(id);
        if (post is null)
@@ -140,7 +140,7 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
        return Ok(post);
            
     }
-    [HttpDelete("delete/{id}")]
+    [HttpDelete("DeletePost/{id}")]
     [Authorize]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -163,7 +163,7 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
 
         return NoContent();
     }
-    [HttpGet("paged")]
+    [HttpGet("Paged")]
     [AllowAnonymous]
     public async Task<IActionResult> GetPagedPosts(int skip = 0, int take = 10)
     {
@@ -232,7 +232,7 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
 
         return Ok(results);
     }
-    [HttpPut("{id}/approve")]
+    [HttpPut("{id}/ApprovePost")]
     [Authorize(Roles = "Admin,Moderator")]
     public async Task<IActionResult> ApprovePost(int id)
     {
@@ -255,7 +255,7 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
 
         return Ok("Yazı onaylandı ve e-posta gönderildi.");
     }
-    [HttpPut("{id}/reject")]
+    [HttpPut("{id}/RejectPost")]
     [Authorize(Roles = "Admin,Moderator")]
     public async Task<IActionResult> RejectPost(int id)
     {
@@ -278,7 +278,7 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
 
         return Ok("Yazı reddedildi ve e-posta gönderildi.");
     }
-    [HttpGet("pending")]
+    [HttpGet("Pending")]
     [Authorize(Roles = "Moderator,Admin")]
     public async Task<IActionResult> GetPendingPosts()
     {
@@ -298,7 +298,7 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
 
         return Ok(pendingPosts);
     }
-    [HttpGet("myposts")]
+    [HttpGet("MyPosts")]
     [Authorize]
     public async Task<IActionResult> GetMyPosts()
     {
@@ -321,7 +321,7 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
 
         return Ok(myPosts);
     }
-    [HttpGet("rejected")]
+    [HttpGet("MyRejected")]
     [Authorize]
     public async Task<IActionResult> GetRejectedPosts()
     {

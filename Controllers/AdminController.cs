@@ -36,7 +36,7 @@ public class AdminController(AppDbContext context,IEmailSender emailSender,IFlue
     [HttpPost("assign-role")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(statusCode: StatusCodes.Status404NotFound)]
+    [ProducesResponseType( StatusCodes.Status404NotFound)]
         public async Task<IActionResult> AssignRole([FromQuery] string userName, [FromQuery] string role)
         {
             var user = await userManager.FindByNameAsync(userName);

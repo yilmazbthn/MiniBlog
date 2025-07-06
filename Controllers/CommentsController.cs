@@ -11,7 +11,7 @@ using MiniBlog.Models.Entities;
 namespace MiniBlog.Controllers;
 [ApiController]
 [Route("[controller]")]
-public class CommentsController(AppDbContext context,IEmailSender emailSender,IFluentEmail fluentEmail,UserManager<IdentityUser> userManager,RoleManager<IdentityRole> roleManager):ControllerBase
+public partial class CommentsController(AppDbContext context,IEmailSender emailSender,IFluentEmail fluentEmail,UserManager<IdentityUser> userManager,RoleManager<IdentityRole> roleManager):ControllerBase
 {
     [HttpPost("Add/{postId}")]
     [Authorize]
