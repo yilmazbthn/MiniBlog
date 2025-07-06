@@ -14,7 +14,7 @@ namespace MiniBlog.Controllers;
 [Route("[controller]")]
 public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserManager<IdentityUser> userManager,RoleManager<IdentityRole> roleManager):ControllerBase
 {
-    [HttpGet("GetAllPosts")]
+    [HttpGet("Getallposts")]
     [AllowAnonymous]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(statusCode: StatusCodes.Status404NotFound)]
@@ -75,7 +75,7 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
         return Ok(post);
     }
 
-    [HttpPost("Create")]
+    [HttpPost("create")]
     [Authorize]
     public async Task<IActionResult> Create([FromBody] PostDto post)
     {
@@ -298,7 +298,7 @@ public class PostsController(AppDbContext context,IFluentEmail fluentEmail,UserM
 
         return Ok(pendingPosts);
     }
-    [HttpGet("my-posts")]
+    [HttpGet("myposts")]
     [Authorize]
     public async Task<IActionResult> GetMyPosts()
     {

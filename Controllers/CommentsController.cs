@@ -79,7 +79,7 @@ public class CommentsController(AppDbContext context,IEmailSender emailSender,IF
         return NoContent();
     }
     
-    [HttpGet]
+    [HttpGet("")]
     [Authorize(Roles = "Moderator,Admin")]
     public async Task<IActionResult> GetAllComments()
     {
