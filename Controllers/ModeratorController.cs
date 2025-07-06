@@ -48,9 +48,10 @@ public class ModeratorController(AppDbContext context,IEmailSender emailSender,I
                 .Body($"Merhaba {post.Author.UserName},\n\n\"{post.Title}\" başlıklı yazınız moderatör tarafından onaylandı ve yayına alındı.")
                 .SendAsync();
         }
-        catch
-        {   
-
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ApprovePost] Hata: {ex.Message}");
+            return StatusCode(500, "Yazı onaylanırken bir hata oluştu.");
         }
 
         return Ok("Yazı onaylandı ve e-posta gönderildi.");
@@ -75,9 +76,10 @@ public class ModeratorController(AppDbContext context,IEmailSender emailSender,I
                 .Body($"Merhaba {post.Author.UserName},\n\n\"{post.Title}\" başlıklı yazınız moderatör tarafından uygun bulunmadığı için reddedildi.")
                 .SendAsync();
         }
-        catch
+        catch (Exception ex)
         {
-
+            Console.WriteLine($"[RejectPost] Hata: {ex.Message}");
+            return StatusCode(500, "Yazı reddedilirken bir hata oluştu.");
         }
 
         return Ok("Yazı reddedildi ve e-posta gönderildi.");
